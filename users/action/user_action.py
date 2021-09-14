@@ -4,7 +4,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework import status
 
 from users.models import CustomUser
-from users.serializer import UserSerializer
+from users.serializer import UserSerializer, LoginSerializer
 
 
 class UserAction:
@@ -26,22 +26,36 @@ class UserAction:
 
     @staticmethod
     def login(request):
-        data = request.data
-        error = {}
-        if 'username' not in data:
-            error['username'] = ['The username field is required.']
-        if 'password' not in data:
-            error['password'] = ['The password field is required.']
-        if len(error) == 0:
+        serializer = LoginSerializer(data=request.data)
+        if not serializer.is_valid():
+            return serializer.errors, status.HTTP_400_BAD_REQUEST
+        else:
             try:
-                user = CustomUser.objects.get(username=data['username'])
-                if not check_password(data['password'], user.password):
-                    return 'username or password is incorrect.', status.HTTP_400_BAD_REQUEST
+                user = CustomUser.objects.get(username=serializer.data['username'])
+                if not check_password(serializer.data['password'], user.password):
+                    return 'Incorrect username or password.', status.HTTP_400_BAD_REQUEST
                 login(request, user)
                 token, created = Token.objects.get_or_create(user=user)
                 return {'username': user.username, 'email': user.email, 'token': token.key}, status.HTTP_200_OK
             except CustomUser.DoesNotExist:
-                return 'username or password is incorrect.', status.HTTP_400_BAD_REQUEST
+                return 'Incorrect username or password.', status.HTTP_400_BAD_REQUEST
+
+        # data = request.data
+        # error = {}
+        # if 'username' not in data:
+        #     error['username'] = ['The username field is required.']
+        # if 'password' not in data:
+        #     error['password'] = ['The password field is required.']
+        # if len(error) == 0:
+        #     try:
+        #         user = CustomUser.objects.get(username=data['username'])
+        #         if not check_password(data['password'], user.password):
+        #             return 'username or password is incorrect.', status.HTTP_400_BAD_REQUEST
+        #         login(request, user)
+        #         token, created = Token.objects.get_or_create(user=user)
+        #         return {'username': user.username, 'email': user.email, 'token': token.key}, status.HTTP_200_OK
+        #     except CustomUser.DoesNotExist:
+        #         return 'username or password is incorrect.', status.HTTP_400_BAD_REQUEST
 
     @staticmethod
     def logout(request):
